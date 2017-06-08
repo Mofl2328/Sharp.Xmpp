@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Net.Security;
+using System.Security;
 
 namespace Sharp.Xmpp.Client
 {
@@ -163,6 +163,11 @@ namespace Sharp.Xmpp.Client
         private MessageCarbons messageCarbons;
 
         /// <summary>
+        /// Provides the MaM extension
+        /// </summary>
+        private MessageArchiveManagment mam;
+
+        /// <summary>
         /// The hostname of the XMPP server to connect to.
         /// </summary>
         public string Hostname
@@ -247,7 +252,7 @@ namespace Sharp.Xmpp.Client
         /// A delegate used for verifying the remote Secure Sockets Layer (SSL)
         /// certificate which is used for authentication.
         /// </summary>
-        public RemoteCertificateValidationCallback Validate
+        public System.Net.Security.RemoteCertificateValidationCallback Validate
         {
             get
             {
@@ -697,7 +702,7 @@ namespace Sharp.Xmpp.Client
         /// <remarks>Use this constructor if you wish to connect to an XMPP server using
         /// an existing set of user credentials.</remarks>
         public XmppClient(string hostname, string username, string password,
-            int port = 5222, bool tls = true, RemoteCertificateValidationCallback validate = null)
+            int port = 5222, bool tls = true, System.Net.Security.RemoteCertificateValidationCallback validate = null)
         {
             im = new XmppIm(hostname, username, password, port, tls, validate);
             // Initialize the various extension modules.
@@ -723,7 +728,7 @@ namespace Sharp.Xmpp.Client
         /// <remarks>Use this constructor if you wish to register an XMPP account using
         /// the in-band account registration process supported by some servers.</remarks>
         public XmppClient(string hostname, int port = 5222, bool tls = true,
-            RemoteCertificateValidationCallback validate = null)
+            System.Net.Security.RemoteCertificateValidationCallback validate = null)
         {
             im = new XmppIm(hostname, port, tls, validate);
             LoadExtensions();
@@ -893,7 +898,7 @@ namespace Sharp.Xmpp.Client
             sbyte priority = 0, CultureInfo language = null)
         {
             AssertValid();
-            im.SetStatus(availability, message, 0, language);
+            im.SetStatus(availability, message, priority, language);
         }
 
         /// <summary>
@@ -1139,12 +1144,19 @@ namespace Sharp.Xmpp.Client
         /// <param name="str">The payload string to provide to the Request</param>
         /// <param name="callback">The callback method to call after the Request Result has being received. Included the serialised dat
         /// of the answer to the request</param>
-        public void RequestCustomIq(Jid jid, string str, Action callback = null)
+        public void RequestCustomIq(Jid jid, string str, CustomIqRequestDelegate callback = null)
         {
             AssertValid();
             if (callback == null) cusiqextension.RequestCustomIq(jid, str);
             else
                 cusiqextension.RequestCustomIqAsync(jid, str, callback);
+        }
+
+        public void RequestArchivedMessages(Jid jid, int maxNumber, MessageArchiveManagmentRequestDelegate callback, string before = null, string after = null)
+        {
+            AssertValid();
+            // TODO add support for first, last and direction (after/before)
+            mam.RequestCustomIqAsync(jid, maxNumber, callback, before, after );
         }
 
         /// <summary>
@@ -2032,6 +2044,8 @@ namespace Sharp.Xmpp.Client
             vcardAvatars = im.LoadExtension<VCardAvatars>();
             cusiqextension = im.LoadExtension<CustomIqExtension>();
             groupChat = im.LoadExtension<MultiUserChat>();
+            mam = im.LoadExtension<MessageArchiveManagment>();
+            
         }
     }
 }
