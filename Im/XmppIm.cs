@@ -2,6 +2,7 @@
 using Sharp.Xmpp.Extensions;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -1646,6 +1647,7 @@ namespace Sharp.Xmpp.Im
         /// <param name="message">The received message stanza.</param>
         private void OnMessage(Message message)
         {
+            Console.WriteLine("BLBALBABAL  " + message.ToString());
             // Invoke IInput<Message> Plugins.
             foreach (var ext in extensions)
             {
@@ -1662,6 +1664,24 @@ namespace Sharp.Xmpp.Im
             // a body.
             if (message.Data["body"] != null)
                 Message.Raise(this, new MessageEventArgs(message.From, message));
+            // Also raise when the messages comes from an archive
+            // Due to the different format the inner message is sent forward with the external timestamp included
+            if(message.Data["result"] != null && message.Data["result"]["forwarded"] != null)
+            {
+                var realMessageNode = message.Data["result"]["forwarded"]["message"];
+                var timestamp = message.Data["result"]["forwarded"]["delay"];
+                realMessageNode.AppendChild(timestamp);
+                var realMessage = new Message(new Core.Message(realMessageNode));
+                Message.Raise(this, new MessageEventArgs(realMessage.From, realMessage));
+            }
+
+            if (message.Data["event"] != null && message.Data["event"]["items"] != null && message.Data["event"]["items"]["item"] != null && message.Data["event"]["items"]["item"]["message"] != null)
+            {
+                var realMessageNode = message.Data["event"]["items"]["item"]["message"];
+                var realMessage = new Message(new Core.Message(realMessageNode));
+                Console.WriteLine(realMessageNode);
+                Message.Raise(this, new MessageEventArgs(realMessage.From, realMessage));
+            }
         }
 
         /// <summary>
